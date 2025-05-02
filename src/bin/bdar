@@ -1,0 +1,61 @@
+#! /usr/bin/env nu
+
+let config = {
+  base_dir: /home/robert/projects/optical_photo_archive/
+  source_dir: 'testing'
+  exclude_dirs: ['professional', 'vocab/vocab_extraction']
+  metadata_dir: '.bdar'
+  db_name: db.sqlite
+  # media_size: 4.7GB # DVD
+}
+
+def meta_dir [] {
+  [ $config.base_dir $config.metadata_dir ] | path join
+}
+
+def run_query [name: string] {
+  cd $config.base_dir
+
+  stor open | query db (open $"($name).sql")
+}
+
+def main [] {
+  meta_dir
+}
+
+def db_filename [] {
+  [( meta_dir ), $config.db_name] | path join 
+}
+
+def "main setup" [] {
+  cd $config.base_dir
+
+  if (db_filename | path exists) { return }
+
+  stor reset
+
+  mkdir ( meta_dir )
+
+  run_query init_snapshots
+  run_query init_files
+
+  stor export --file-name (db_filename)
+}
+
+def "main clean" [] {
+  rm (db_filename)
+}
+
+def initialize [] {
+}
+
+def "main get-source-files" [dir: string] {
+  cd $config.base_dir
+
+  ls ($"($dir)/**/*" | into glob)
+    | filter { $in.type != dir } 
+    | reject type 
+    | update modified { format date "%s" } 
+    | update name { path parse } 
+    | flatten
+}

@@ -1,61 +1,178 @@
 #! /usr/bin/env nu
 
-let config = {
-  base_dir: /home/robert/projects/optical_photo_archive/
-  source_dir: 'testing'
-  exclude_dirs: ['professional', 'vocab/vocab_extraction']
-  metadata_dir: '.bdar'
-  db_name: db.sqlite
-  # media_size: 4.7GB # DVD
+# Config
+################################################################################
+
+const BDAR_HASH_LENGTH = 8
+
+def err_exit [message: string] { print --stderr $message; exit 1 }
+
+def lib_dir [] { $env.BDAR_LIB_DIR? | default /usr/lib/bdar/ }
+
+# normally ~/.local/share/bdar
+def data_dir [] {
+  $env.BDAR_DATA_DIR? | default (
+    [( $env.XDG_DATA_HOME? | default '~/.local/share' ), 'bdar' ] | path join
+  )
 }
 
-def meta_dir [] {
-  [ $config.base_dir $config.metadata_dir ] | path join
+# normally ~/.config/bdar
+def config_dir [] {
+  $env.BDAR_CONFIG_DIR? | default (
+    [( $env.XDG_CONFIG_HOME | default '~/.config/'), 'bdar'] | path join
+  )
 }
 
-def run_query [name: string] {
-  cd $config.base_dir
+def config_file [] { ([(config_dir), 'config.yml'] | path join) }
 
-  stor open | query db (open $"($name).sql")
+def load_config [] {
+  if not (config_file | path exists) { err_exit $"Config file not found at (config_file)." }
+
+  open (config_file)
 }
 
+def repo_config [repo_name?: string] {
+  let config = load_config
+
+  match [($config.repos | length), $repo_name] {
+    [0, _] => { err_exit $"No repos configured in (config_file)." } 
+    [1, null] => { return ($config.repos | first) }
+    [_, null] => { err_exit $"You must specify a which repo in (config_file) we are using"}
+
+    _ => {
+      let matches = $config.repos | where ($it.name == $repo_name)
+
+      match ($matches | length) {
+        1 => { return ($matches | first) }
+        0 => { err_exit $"No repo config found for ($repo_name) in (config_file)." }
+        _ => { err_exit $"More than one match for repo named ($repo_name) in (config_file)." }
+      }
+    }
+  }
+}
+
+def db_filename [repo_name?: string] {
+  let repo = repo_config $repo_name
+
+  [(data_dir), $"($repo.name).sqlite"] | path join 
+}
+
+
+# User commands (repo name optional)
+################################################################################
 def main [] {
-  meta_dir
+    run_query dev get_previous_snapshot
 }
 
-def db_filename [] {
-  [( meta_dir ), $config.db_name] | path join 
+def "main ingest" [repo_name?: string] {
+  print "Capturing File Tree..."
+  let ingested_count = run_query $repo.name count_files --params $ingest_id
+    | first | get count
+
+  print $"File tree retrieved. Total Files indexed: ($ingested_count)"
+
+  let ingested_size = run_query $repo.name sum_file_size --params $ingest_id
+  print $"Total indexed size: ($ingested_size.bytes | into filesize | first)"
+
+  # Copy over existing checksums
+  run_query $repo.name copy_checksums --params $ingest_id
+
+  # Generate new checksums
+  while true {
+    let queue = run_query $repo.name get_missing_checksums --params $ingest_id
+
+    if (($queue | length) == 0) {
+      print "All checksums generated!"
+
+      break 
+    }
+
+    $queue | each { |file| 
+      let filename = [$repo.source_dir, ($file.name | str trim --char '/' --left)] | path join | path expand
+
+      print $"Checksumming ($filename)"
+      run_query $repo.name set_checksum --params {
+        file_id: $file.file_id,
+        hash: (b3sum --length $BDAR_HASH_LENGTH $filename)
+      }
+    }
+  }
+
+  print "Indexing Complete."
+
+  let previous_snapshot_id = (run_query $repo.name get_previous_snapshot | get snapshot_id?)
 }
 
-def "main setup" [] {
-  cd $config.base_dir
+def "main setup" [repo_name?: string] {
+  mkdir (data_dir)
 
-  if (db_filename | path exists) { return }
+  let repo = repo_config $repo_name
+  if (db_filename $repo.name | path exists) { return }
 
-  stor reset
-
-  mkdir ( meta_dir )
-
-  run_query init_snapshots
-  run_query init_files
-
-  stor export --file-name (db_filename)
+  run_query $repo.name init
+  open (db_filename $repo.name) | schema
 }
 
-def "main clean" [] {
-  rm (db_filename)
+def "main reset" [repo_name?: string] {
+  let repo = repo_config $repo_name
+
+  rm (db_filename $repo.name)
 }
 
-def initialize [] {
+def "main repl" [repo_name?: string] {
+  let repo = repo_config $repo_name
+
+  sqlite3 (db_filename $repo.name)
 }
 
-def "main get-source-files" [dir: string] {
-  cd $config.base_dir
+# def "main refresh" [repo_name?: string] {
+#   let repo = repo_config $repo_name
+# }
 
-  ls ($"($dir)/**/*" | into glob)
-    | filter { $in.type != dir } 
-    | reject type 
-    | update modified { format date "%s" } 
-    | update name { path parse } 
-    | flatten
+# Internal commands (repo name required)
+################################################################################
+
+def run_query [repo_name: string, query_name: string, --params: record] {
+  let query_string = [
+    ...(build_param_list $params),
+    (open (query_filename $query_name))
+  ] | compact | str join "\n"
+
+  $query_string | sqlite3 -header -csv (db_filename $repo_name) | from csv
 }
+
+def build_param_list [params?: record] {
+  if ($params == null) { return [] }
+
+  $params | transpose key value | each { |p| $".parameter set :($p.key) '($p.value)'" }
+}
+
+def query_filename [query_name: string] {
+  [(lib_dir), sql, $"($query_name).sql"] | path join
+}
+
+def index_files [repo_name: string, source_dir: string] {
+  let repo = repo_config $repo_name
+  let ingest_run = run_query $repo.name create_ingest_run | first
+
+  let ingest_id = {}
+
+  run_query $repo.name ingest_files --params {
+    ingest_run_id: $ingest_run.ingest_run_id 
+    source_dir: ($source_dir | path expand)
+  }
+
+  return $ingest_run
+}
+
+# def "main get-source-files" [dir: string] {
+#   # cd $config.base_dir
+#
+#   ls ($"($dir)/**/*" | into glob)
+#     | filter { $in.type != dir } 
+#     | reject type 
+#     | update modified { format date "%s" } 
+#     | update name { path parse } 
+#     | flatten
+# }
+

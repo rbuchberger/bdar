@@ -1,9 +1,12 @@
-use self::context::Context;
-use self::db::DB;
+mod context;
+mod db;
+mod error;
+mod ingest;
 
-pub mod context;
-pub mod db;
-pub mod ingest;
+pub use self::error::{Error, Result};
+
+use crate::context::Context;
+use crate::db::DB;
 
 use clap::{Parser, Subcommand};
 
@@ -11,10 +14,13 @@ use clap::{Parser, Subcommand};
 enum Commands {
     /// Create database
     Initialize,
+
     /// Delete database
     Reset,
+
     /// Capture current file tree
     Index,
+
     /// Generate missing checksums. (May take awhile. Resumable)
     Checksum,
 }
@@ -31,19 +37,20 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let ctx = Context::new(args.repo_name);
-    let db = DB::new(&ctx.db_path);
+    let ctx = Context::new(args.repo_name).expect("Unable to build context.");
+    let mut db = DB::new(&ctx.db_path).unwrap();
 
     match args.command {
         Commands::Initialize => {
-            let _ = db.initialize();
+            let _ = db.initialize().unwrap();
         }
         Commands::Reset => {
             let _ = DB::reset(db);
         }
         Commands::Index => {
-            ingest::index(&ctx, &db);
+            let _ = ingest::index(&ctx, &mut db);
         }
+
         _ => unimplemented!("WIP"),
     }
 }

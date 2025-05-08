@@ -2,8 +2,6 @@
 UPDATE
     ingest_runs
 SET
-    finished
-VALUES
-    (unixepoch())
+    finished = (unixepoch())
 WHERE
     id = :ingest_run_id;

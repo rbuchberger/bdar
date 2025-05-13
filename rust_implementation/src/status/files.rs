@@ -48,8 +48,8 @@ impl FileReport {
     fn query<T: Params>(db: &DB, sql: &str, params: T) -> Result<Self> {
         Ok(db.connection.query_row(sql, params, |row| {
             Ok(Self {
-                count: row.get::<_, usize>(0)?,
-                bytes: row.get::<_, usize>(1)?,
+                count: row.get(0)?,
+                bytes: row.get(1)?,
             })
         })?)
     }

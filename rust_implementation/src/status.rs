@@ -103,8 +103,8 @@ impl Status {
 
 pub fn report(ctx: &Context, db: &DB) -> Result<()> {
     match Status::new(ctx, db) {
-        Ok(dirty) => {
-            println!("{}", dirty);
+        Ok(status) => {
+            println!("{}", status);
         }
         Err(problem) => {
             dbg!(problem);

@@ -45,6 +45,10 @@ impl FileReport {
         )
     }
 
+    pub fn repo_totals(db: &DB) -> Result<Self> {
+        Self::query(db, sql!("report_repo_totals"), ())
+    }
+
     fn query<T: Params>(db: &DB, sql: &str, params: T) -> Result<Self> {
         Ok(db.connection.query_row(sql, params, |row| {
             Ok(Self {

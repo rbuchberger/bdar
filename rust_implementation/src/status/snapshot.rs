@@ -5,14 +5,11 @@ use crate::db::DB;
 use crate::timestamp::Timestamp;
 use crate::{sql, Result};
 
-use super::files::FileReport;
-
 #[derive(Debug, Copy, Clone, Display)]
-#[display("Number {id} - total files: {files} - captured {capture_time} ago")]
+#[display("Number {id} - captured {capture_time} ago")]
 pub struct Snapshot {
     pub id: usize,
     pub capture_time: Timestamp,
-    pub files: FileReport,
 }
 
 impl Snapshot {
@@ -23,10 +20,6 @@ impl Snapshot {
                 Ok(Snapshot {
                     id: row.get(0)?,
                     capture_time: Timestamp(row.get(1)?),
-                    files: FileReport {
-                        count: row.get(2)?,
-                        bytes: row.get(3)?,
-                    },
                 })
             })
             .optional()?)

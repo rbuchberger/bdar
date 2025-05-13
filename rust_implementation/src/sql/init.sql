@@ -18,7 +18,7 @@ CREATE TABLE disks (
     FOREIGN KEY (snapshot_id) REFERENCES snapshots (id)
 );
 
-CREATE TABLE IF NOT EXISTS files (
+CREATE TABLE files (
     id INTEGER PRIMARY KEY,
     added_snapshot_id INTEGER,
     deleted_snapshot_id INTEGER,

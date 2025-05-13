@@ -1,5 +1,3 @@
-// use std::fs::DirEntry;
-
 use crate::context::Context;
 use crate::db::{sql, DB};
 use crate::timestamp::Timestamp;
@@ -76,14 +74,27 @@ pub fn index(ctx: &Context, db: &mut DB) -> Result<()> {
 
     walk_tree(ctx, &tx, ingest_run_id);
 
+    // mark ingest run finished
+    assert!(&tx
+        .execute(
+            sql!("finish_ingest_run"),
+            named_params! { ":ingest_run_id": ingest_run_id },
+        )?
+        .eq(&1),);
+
+    // copy checksums
     let _ = &tx.execute(
-        sql!("finish_ingest_run"),
+        sql!("copy_checksums"),
         named_params! { ":ingest_run_id": ingest_run_id },
     )?;
 
-    let _ = &tx.commit()?;
+    // clean up old files
+    let _ = &tx.execute(
+        sql!("cleanup_files"),
+        named_params! { ":ingest_run_id": ingest_run_id },
+    );
 
-    Ok(())
+    tx.commit().map_err(|e| e.into())
 }
 
 // Either handles its own errors, or panics.

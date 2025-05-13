@@ -1,18 +1,18 @@
+// Disable before publishing; the dead code errors are noise while it's a WIP.
+#![allow(dead_code)]
+
 mod context;
 mod db;
 mod error;
 mod ingest;
 mod status;
-mod utils;
+mod timestamp;
 
 use self::db::sql;
 pub use self::error::{Error, Result};
-use self::status::IngestRun;
-use self::utils::Timestamp;
 
 use crate::context::Context;
 use crate::db::DB;
-use crate::status::report;
 
 use clap::{Parser, Subcommand};
 

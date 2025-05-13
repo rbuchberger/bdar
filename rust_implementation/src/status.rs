@@ -1,34 +1,24 @@
+use std::fmt;
 use std::fs::exists;
 
 use derive_more::{Display, Error};
-use rusqlite::{named_params, OptionalExtension};
 
 use crate::context::Context;
 use crate::db::DB;
-use crate::utils::Timestamp;
-use crate::{sql, Result};
+use crate::Result;
 
-#[derive(Debug, Default, Copy, Clone)]
-pub struct FileReport {
-    pub count: usize,
-    pub bytes: usize,
-}
+use self::disks::Disks;
+use self::files::FileReport;
+use self::ingest_run::IngestRun;
+use self::snapshot::Snapshot;
 
-#[derive(Debug, Copy, Clone)]
-pub struct IngestRun {
-    pub id: usize,
-    pub started: Timestamp,
-    pub finished: Option<Timestamp>,
-}
+mod disks;
+mod files;
+mod ingest_run;
+mod snapshot;
 
 #[derive(Debug, Copy, Clone)]
-pub struct Snapshot {
-    pub id: usize,
-    pub capture_time: Timestamp,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct DirtyItems {
+pub struct Status {
     last_snapshot: Option<Snapshot>,
     last_ingest_run: IngestRun,
     files_missing_checksums: FileReport,
@@ -44,94 +34,60 @@ pub enum StatusErr {
     NotInitialized,
 }
 
-impl DirtyItems {
+impl fmt::Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Status Report:")?;
+        match self.last_snapshot {
+            Some(s) => writeln!(f, "  Last Snapshot: {}", s),
+            None => writeln!(f, "  Last Snapshot: Never"),
+        }?;
+        writeln!(f, "  Last Index: {}", self.last_ingest_run)?;
+        writeln!(f, "  Burn Queue Length: {}", self.disks_awaiting_burn)?;
+        writeln!(
+            f,
+            "  Files Missing Checksums: {}",
+            self.files_missing_checksums
+        )?;
+
+        if self.files_missing_checksums.count > 0 {
+            writeln!(
+                f,
+                "    - Note that without a checksum, bdar cannot detect a moved file."
+            )?;
+            writeln!(
+                f,
+                "      It will be reported as deleted and created until hashed."
+            )?;
+        }
+
+        writeln!(f, "Since Last Snapshot:")?;
+        writeln!(f, "  New Files:     {}", self.new_files)?;
+        writeln!(f, "  Deleted Files: {}", self.deleted_files)?;
+        writeln!(f, "  Moved Files:   {}", self.moved_files)?;
+
+        Ok(())
+    }
+}
+
+impl Status {
     fn new(ctx: &Context, db: &DB) -> Result<Self> {
         if !exists(&ctx.db_path)? {
             return Err(Box::new(StatusErr::NotInitialized));
         };
 
-        let last_ingest_run = db
-            .connection
-            .query_row(sql!("get_last_ingest_run"), (), |row| {
-                let finished = row.get::<_, Option<u64>>(2)?;
-                Ok(IngestRun {
-                    id: row.get::<_, usize>(0)?,
-                    started: row.get::<_, u64>(1).map(Timestamp)?,
-                    finished: finished.map(Timestamp),
-                })
-            })
-            .or(Err(Box::new(StatusErr::NotIndexed)))?;
-
-        let last_snapshot = db
-            .connection
-            .query_row(sql!("get_previous_snapshot"), (), |row| {
-                Ok(Snapshot {
-                    id: row.get::<_, usize>(0)?,
-                    capture_time: Timestamp(row.get(1)?),
-                })
-            })
-            .optional()?;
-
-        let files_missing_checksums = db.connection.query_row(
-            sql!("report_missing_checksums"),
-            named_params! { ":ingest_run_id": last_ingest_run.id },
-            |row| {
-                Ok(FileReport {
-                    count: row.get::<_, usize>(0)?,
-                    bytes: row.get::<_, usize>(1)?,
-                })
-            },
-        )?;
-
-        let new_files = db
-            .connection
-            .query_row(sql!("report_new_files"), (), |row| {
-                Ok(FileReport {
-                    count: row.get::<_, usize>(0)?,
-                    bytes: row.get::<_, usize>(1)?,
-                })
-            })?;
-        dbg!(&new_files);
-
+        let last_ingest_run = IngestRun::get_last(db)?;
+        let last_snapshot = Snapshot::get_last(db)?;
+        let files_missing_checksums = FileReport::missing_checksums(db, last_ingest_run.id)?;
+        let new_files = FileReport::new_files(db)?;
         let deleted_files = last_snapshot
-            .map(|s| {
-                db.connection.query_row(
-                    sql!("report_deleted_files"),
-                    named_params! { ":snapshot_id": s.id},
-                    |row| {
-                        Ok(FileReport {
-                            count: row.get::<_, usize>(0)?,
-                            bytes: row.get::<_, usize>(1)?,
-                        })
-                    },
-                )
-            })
-            .transpose()?
-            .unwrap_or(FileReport::default());
+            .map(|s| FileReport::deleted_files(db, s.id))
+            .unwrap_or(Ok(FileReport::default()))?;
 
         let moved_files = last_snapshot
-            .map(|s| {
-                db.connection.query_row(
-                    sql!("report_moved_files"),
-                    named_params! { ":snapshot_id": s.id},
-                    |row| {
-                        Ok(FileReport {
-                            count: row.get::<_, usize>(0)?,
-                            bytes: row.get::<_, usize>(1)?,
-                        })
-                    },
-                )
-            })
-            .transpose()?
-            .unwrap_or(FileReport::default());
+            .map(|s| FileReport::moved_files(db, s.id))
+            .unwrap_or(Ok(FileReport::default()))?;
 
-        let disks_awaiting_burn =
-            db.connection
-                .query_row(sql!("report_disks_not_burned"), (), |row| {
-                    row.get::<_, usize>(0)
-                })?;
-
-        dbg!(&disks_awaiting_burn);
+        let disks_awaiting_burn = Disks::awaiting_burn(db)?;
 
         Ok(Self {
             last_snapshot,
@@ -146,9 +102,9 @@ impl DirtyItems {
 }
 
 pub fn report(ctx: &Context, db: &DB) -> Result<()> {
-    match DirtyItems::new(ctx, db) {
+    match Status::new(ctx, db) {
         Ok(dirty) => {
-            dbg!(dirty);
+            println!("{}", dirty);
         }
         Err(problem) => {
             dbg!(problem);

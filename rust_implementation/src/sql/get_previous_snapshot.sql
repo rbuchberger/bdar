@@ -1,5 +1,6 @@
 SELECT
-    *
+    id,
+    capture_time
 FROM
     snapshots
 ORDER BY

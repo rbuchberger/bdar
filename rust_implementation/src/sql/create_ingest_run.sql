@@ -1,4 +1,4 @@
 INSERT INTO
     ingest_runs DEFAULT
 VALUES
-;
+    RETURNING id;

@@ -3,7 +3,7 @@ use std::{env, fs};
 
 use serde::Deserialize;
 
-use crate::Result;
+use crate::{Args, Result};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Repo {
@@ -24,12 +24,13 @@ pub struct Context {
     pub repo: Repo,
     // pub repo_name: String,
     pub db_path: PathBuf,
+    pub args: Args,
 }
 
 impl Context {
-    pub fn new(repo_name: Option<String>) -> Result<Self> {
+    pub fn new(args: Args) -> Result<Self> {
         let config = Self::load_config_file()?;
-        let repo = Self::get_repo_config(&config, repo_name)?.clone();
+        let repo = Self::get_repo_config(&config, args.repo_name.clone())?.clone();
         // let repo_name = repo.name.clone();
         let db_path = Self::data_dir().join(format!("{}.sqlite", &repo.name));
 
@@ -38,6 +39,7 @@ impl Context {
             repo,
             // repo_name,
             db_path,
+            args,
         });
     }
 

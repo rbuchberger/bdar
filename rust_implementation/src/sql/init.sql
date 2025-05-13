@@ -14,6 +14,7 @@ CREATE TABLE disks (
     disk_number INTEGER NOT NULL,
     snapshot_id INTEGER NOT NULL,
     capacity INTEGER NOT NULL,
+    burned_timestamp INTEGER,
     FOREIGN KEY (snapshot_id) REFERENCES snapshots (id)
 );
 

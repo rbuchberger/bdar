@@ -2,7 +2,7 @@
 
 use crate::context::Context;
 use crate::db::{sql, DB};
-use crate::utils::get_unix_timestamp;
+use crate::timestamp::Timestamp;
 use crate::{Error, Result};
 
 use derive_more::{Display, From};
@@ -56,7 +56,7 @@ impl TryFrom<walkdir::DirEntry> for InsertableFile {
             .modified()
             .map_err(|e| SkipReason::OtherError(e.into()))?;
 
-        let modified = get_unix_timestamp(modified)
+        let modified = Timestamp::try_from(modified)
             .map_err(|e| SkipReason::OtherError(e.into()))?
             .0 as usize;
 

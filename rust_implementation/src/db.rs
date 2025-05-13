@@ -7,7 +7,13 @@ use crate::Result;
 
 macro_rules! sql {
     ($name:literal) => {
-        include_str!(concat!("sql/", $name, ".sql"))
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src",
+            "/sql/",
+            $name,
+            ".sql"
+        ))
     };
 }
 

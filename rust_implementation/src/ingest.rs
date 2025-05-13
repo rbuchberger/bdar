@@ -1,22 +1,18 @@
 // use std::fs::DirEntry;
-use std::io;
-use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::context::Context;
 use crate::db::{sql, DB};
-use crate::Result;
+use crate::utils::get_unix_timestamp;
+use crate::{Error, Result};
 
+use derive_more::{Display, From};
 use glob_match::glob_match;
-use rusqlite::named_params;
-use walkdir::{DirEntry, WalkDir};
+use rusqlite::{named_params, Transaction};
+use walkdir::WalkDir;
 
 // check for interrupted ingest run?
 // start ingest run
 // walk files
-// - handle exclude patterns
-// - handle errors (probably permissions)
-// - insert into db
 // - copy over checksums
 
 // insert performance:
@@ -24,41 +20,47 @@ use walkdir::{DirEntry, WalkDir};
 // - use prepared statements
 // - batching inserts into groups of 5 gives at most a 2x speedup. Not worth it.
 
-pub struct FileInsert {
+pub struct InsertableFile {
     pub path: String,
     pub modified: usize,
     pub size: usize,
 }
 
-impl FileInsert {
-    fn from_entry(entry: walkdir::DirEntry) -> Option<Self> {
-        let metadata = match entry.metadata() {
-            Err(e) => {
-                eprintln!("{}", e);
-                None
-            }
-            Ok(m) => Some(m),
-        }?;
+#[derive(Debug, Display, From)]
+pub enum SkipReason {
+    NotAFile,
+    InvalidPath(String),
+    OtherError(Error),
+}
+
+impl TryFrom<walkdir::DirEntry> for InsertableFile {
+    type Error = SkipReason;
+
+    fn try_from(entry: walkdir::DirEntry) -> core::result::Result<Self, SkipReason> {
+        let metadata = entry
+            .metadata()
+            .map_err(|e| SkipReason::OtherError(e.into()))?;
 
         if !metadata.is_file() {
-            return None;
+            return Err(SkipReason::NotAFile)?;
         }
 
-        let path = path_to_str(entry.path())?.into();
-        let size = metadata.len() as usize;
-        let modified = match get_unix_timestamp(metadata.modified()) {
-            Ok(time) => Some(time as usize),
-            Err(e) => {
-                eprintln!(
-                    "Error getting timestamp for {}: {}",
-                    entry.path().display(),
-                    e
-                );
-                None
-            }
-        }?;
+        let path = entry
+            .path()
+            .to_str()
+            .ok_or_else(|| SkipReason::InvalidPath(entry.path().display().to_string()))?
+            .to_string();
 
-        return Some(Self {
+        let size = metadata.len() as usize;
+        let modified = metadata
+            .modified()
+            .map_err(|e| SkipReason::OtherError(e.into()))?;
+
+        let modified = get_unix_timestamp(modified)
+            .map_err(|e| SkipReason::OtherError(e.into()))?
+            .0 as usize;
+
+        return Ok(Self {
             path,
             modified,
             size,
@@ -67,61 +69,12 @@ impl FileInsert {
 }
 
 pub fn index(ctx: &Context, db: &mut DB) -> Result<()> {
-    let should_include = |entry: &DirEntry| -> bool {
-        match &ctx.repo.exclude_globs {
-            None => true,
-            Some(globs) => path_to_str(&entry.path()).map_or(false, |path| {
-                !globs.iter().any(|glob| glob_match(path, glob))
-            }),
-        }
-    };
-
     let tx = db.transaction()?;
+    let ingest_run_id: usize = tx.query_row(sql!("create_ingest_run"), [], |r| r.get(0))?;
 
-    let _ = &tx.execute(sql!("create_ingest_run"), ())?;
+    println!("Indexing directory: {}", ctx.repo.source_dir);
 
-    let ingest_run_id = tx.last_insert_rowid();
-
-    {
-        let mut insert_statement = tx.prepare(sql!("insert_file"))?;
-
-        for entry in WalkDir::new(&ctx.repo.source_dir)
-            .into_iter()
-            .filter_entry(should_include)
-        {
-            match entry {
-                Ok(entry) => {
-                    if let Some(file) = FileInsert::from_entry(entry) {
-                        let _ = insert_statement.execute(named_params! {
-                            ":path": file.path,
-                            ":modified": file.modified,
-                            ":size": file.size,
-                            ":ingest_run_id": ingest_run_id
-                        });
-                    }
-                }
-
-                Err(err) => {
-                    let path = err.path().unwrap_or(Path::new("")).display();
-
-                    println!("failed to access entry {}", path);
-                    if let Some(inner) = err.io_error() {
-                        match inner.kind() {
-                            io::ErrorKind::InvalidData => {
-                                eprintln!("file contains invalid data: {}", inner)
-                            }
-                            io::ErrorKind::PermissionDenied => {
-                                eprintln!("Missing permission to read file: {}", inner)
-                            }
-                            _ => {
-                                eprintln!("Unexpected error occurred: {}", inner)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    walk_tree(ctx, &tx, ingest_run_id);
 
     let _ = &tx.execute(
         sql!("finish_ingest_run"),
@@ -133,16 +86,52 @@ pub fn index(ctx: &Context, db: &mut DB) -> Result<()> {
     Ok(())
 }
 
-fn path_to_str(path: &Path) -> Option<&str> {
-    let result = path.to_str();
+// Either handles its own errors, or panics.
+fn walk_tree(ctx: &Context, tx: &Transaction, ingest_run_id: usize) {
+    let mut insert_statement = tx
+        .prepare(sql!("insert_file"))
+        .expect("Problem preparing hardcoded SQL statement");
 
-    if result.is_none() {
-        eprintln!("Path is not a valid utf8 string! {}", path.display());
-    }
+    WalkDir::new(&ctx.repo.source_dir)
+        .into_iter()
+        .filter_entry(|entry| match &ctx.repo.exclude_globs {
+            None => true,
+            Some(globs) => entry.path().to_str().map_or(false, |path| {
+                !globs.iter().any(|glob| glob_match(path, glob))
+            }),
+        })
+        .filter_map(|entry| {
+            entry
+                .map_err(|e| eprintln!("File indexing error: {}", e))
+                .ok()
+        })
+        .filter_map(|entry| {
+            InsertableFile::try_from(entry)
+                .map_err(|error| match error {
+                    SkipReason::NotAFile => (),
+                    SkipReason::InvalidPath(p) => {
+                        eprintln!("File indexing error: Not a UTF-8 filename: {}", p);
+                    }
+                    SkipReason::OtherError(e) => {
+                        eprintln!("File indexing error: {}", e)
+                    }
+                })
+                .ok()
+        })
+        .for_each({
+            |file| {
+                if ctx.args.verbose {
+                    println!("Indexing file: {}", file.path)
+                }
 
-    return result;
-}
-
-fn get_unix_timestamp(time: io::Result<SystemTime>) -> Result<u64> {
-    Ok(time?.duration_since(UNIX_EPOCH)?.as_secs())
+                insert_statement
+                    .execute(named_params! {
+                        ":path": file.path,
+                        ":modified": file.modified,
+                        ":size": file.size,
+                        ":ingest_run_id": ingest_run_id
+                    })
+                    .expect("Error inserting file into database.");
+            }
+        });
 }

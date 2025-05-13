@@ -2,10 +2,13 @@
 name = "bdar"
 version = "0.1.0"
 edition = "2021"
+authors = ["Robert Buchberger <robert@buchberger.cc"]
+description = "Bare Disk Archiver"
 
 [dependencies]
 blake3 = "1.8.2"
 clap = { version = "4.5.37", features = ["derive"] }
+derive_more = { version = "2.0.1", features = ["display", "from", "error"] }
 glob-match = "0.2.1"
 rusqlite = { version = "0.28.0", features = ["bundled"] }
 serde = { version = "1.0.219", features = ["derive"] }

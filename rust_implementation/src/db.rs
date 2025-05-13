@@ -16,7 +16,7 @@ pub(crate) use sql;
 #[derive(Debug)]
 pub struct DB {
     path: PathBuf,
-    connection: Connection,
+    pub connection: Connection,
 }
 
 // #[derive(Debug)]

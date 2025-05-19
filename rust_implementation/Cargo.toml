@@ -6,7 +6,8 @@ authors = ["Robert Buchberger <robert@buchberger.cc"]
 description = "Bare Disk Archiver"
 
 [dependencies]
-blake3 = "1.8.2"
+anyhow = "1.0.98"
+blake3 = { version = "1.8.2", features = ["mmap", "rayon"] }
 clap = { version = "4.5.37", features = ["derive"] }
 derive_more = { version = "2.0.1", features = ["display", "from", "error"] }
 glob-match = "0.2.1"

@@ -1,20 +1,25 @@
+-- Does not include moved files.
+-- :ingest_run_id
+WITH
+  snapshotted AS (
+    SELECT
+      name,
+      checksum,
+      MAX(capture_time)
+    FROM
+      files
+      INNER JOIN snapshots ON files.added_snapshot_id = snapshots.id
+    GROUP BY
+      name
+  )
 SELECT
-    count(*),
-    sum(current_files.size)
+  COUNT(*),
+  SUM(files.size)
 FROM
-    files AS current_files
-    LEFT JOIN files AS snapshot_files ON snapshot_files.name = current_files.name
-    AND snapshot_files.added_snapshot_id IN (
-        -- most recent snapshot
-        SELECT
-            id
-        FROM
-            snapshots
-        ORDER BY
-            capture_time DESC
-        LIMIT
-            1
-    )
+  files
+  LEFT JOIN snapshotted ON snapshotted.name = files.name
+  AND files.checksum = snapshotted.checksum
 WHERE
-    current_files.added_snapshot_id IS NULL
-    AND snapshot_files.id IS NULL;
+  files.added_snapshot_id IS NULL
+  AND files.ingest_run_id = :ingest_run_id
+  AND snapshotted.name IS NULL;

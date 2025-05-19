@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
+use anyhow::anyhow;
 use serde::Deserialize;
 
 use crate::{Args, Result};
@@ -34,18 +35,18 @@ impl Context {
         // let repo_name = repo.name.clone();
         let db_path = Self::data_dir().join(format!("{}.sqlite", &repo.name));
 
-        return Ok(Self {
+        Ok(Self {
             // config,
             repo,
             // repo_name,
             db_path,
             args,
-        });
+        })
     }
 
     fn config_dir() -> PathBuf {
         match env::var("BDAR_CONFIG_DIR") {
-            Ok(v) => return PathBuf::from(v),
+            Ok(v) => PathBuf::from(v),
             _ => [
                 env::var("XDG_CONFIG_HOME").unwrap_or("~/.config".into()),
                 "bdar".into(),
@@ -57,7 +58,7 @@ impl Context {
 
     fn data_dir() -> PathBuf {
         match env::var("BDAR_DATA_DIR") {
-            Ok(v) => return PathBuf::from(v),
+            Ok(v) => PathBuf::from(v),
             _ => [
                 env::var("XDG_DATA_HOME").unwrap_or("~/.local/share".into()),
                 "bdar".into(),
@@ -74,22 +75,22 @@ impl Context {
 
         let config: Config = serde_yml::from_str(&raw_text)?;
 
-        return Ok(config);
+        Ok(config)
     }
 
-    fn get_repo_config<'a>(config: &'a Config, name: Option<String>) -> Result<&'a Repo> {
+    fn get_repo_config(config: &Config, name: Option<String>) -> Result<&Repo> {
         match (config.repos.len(), name) {
-            (0, _) => Err("No repos configured. Please configure one.".into()),
+            (0, _) => Err(anyhow!("No repos configured. Please configure one.")),
             (1, None) => config
                 .repos
                 .first()
-                .ok_or("I have no idea how this happened".into()),
-            (_, None) => Err("You must specify which repo we are working with.".into()),
+                .ok_or(anyhow!("I have no idea how this happened")),
+            (_, None) => Err(anyhow!("You must specify which repo we are working with.")),
             (_, Some(name)) => config
                 .repos
                 .iter()
                 .find(|&r| r.name == name)
-                .ok_or_else(|| format!("Repo named {} not found in config!", name).into()),
+                .ok_or_else(|| anyhow!("Repo named {} not found in config!", name)),
         }
     }
 }

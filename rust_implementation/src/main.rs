@@ -4,16 +4,20 @@
 mod context;
 mod db;
 mod error;
+mod file_entry;
 mod ingest;
 mod status;
 mod timestamp;
+mod snapshot;
 
 use self::db::sql;
 pub use self::error::{Error, Result};
+use self::ingest::generate_checksums;
 
 use crate::context::Context;
 use crate::db::DB;
 
+use anyhow::bail;
 use clap::{Parser, Subcommand};
 
 #[derive(Subcommand, Debug)]
@@ -56,14 +60,29 @@ fn main() -> Result<()> {
     let mut db = DB::new(&ctx.db_path).unwrap();
 
     match ctx.args.command {
-        Commands::Initialize => db.initialize(),
-        Commands::Reset => DB::reset(db),
-        Commands::Index => ingest::index(&ctx, &mut db),
-        Commands::Status => status::report(&ctx, &db),
-        Commands::Scratch => {
-            return Ok(());
-        }
+        Commands::Initialize => {
+            if db.is_initialized()? {
+                bail!("Database is already initialized.")
+            }
 
-        _ => unimplemented!("WIP"),
+            db.initialize()
+        }
+        Commands::Reset => DB::reset(db),
+        Commands::Index => {
+            if !db.is_initialized()? {
+                bail!("Database must be initialized before indexing.")
+            }
+
+            ingest::index(&ctx, &mut db)
+        }
+        Commands::Checksum => {
+            if !db.is_initialized()? {
+                bail!("Database must be initialized before checksumming.")
+            }
+
+            generate_checksums(&ctx, &mut db)
+        }
+        Commands::Status => status::report(&ctx, &db),
+        Commands::Scratch => Ok(()),
     }
 }

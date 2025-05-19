@@ -53,7 +53,7 @@ impl FileReport {
         Ok(db.connection.query_row(sql, params, |row| {
             Ok(Self {
                 count: row.get(0)?,
-                bytes: row.get(1)?,
+                bytes: row.get(1).unwrap_or_default(),
             })
         })?)
     }

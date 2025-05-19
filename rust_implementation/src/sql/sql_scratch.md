@@ -44,7 +44,7 @@ path parsing:
 select path_dirname(name) from fsdir(.);
 ```
 
-## hash:
+## checksum:
 ```sql
 .load sqlite_extensions/crypto.so 
 select crypto_blake3(data) from fsdir(.);

@@ -9,9 +9,9 @@ WHERE
         FROM
             files
             INNER JOIN files AS existing ON files.name = existing.name
-            AND files.hash = existing.hash
+            AND files.checksum = existing.checksum
             AND existing.snapshot_id IS NOT NULL
-            AND existing.hash IS NOT NULL
+            AND existing.checksum IS NOT NULL
         WHERE
             existing.snapshot_id = :previous_snapshot_id
     )

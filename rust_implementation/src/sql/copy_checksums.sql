@@ -1,12 +1,12 @@
 UPDATE
     files
 SET
-    hash = existing.hash
+    checksum = existing.checksum
 FROM
     (
         SELECT
-            file_id,
-            hash,
+            id,
+            checksum,
             modified,
             name,
             size
@@ -18,4 +18,4 @@ WHERE
     AND files.modified = existing.modified
     AND files.size = existing.size
     AND files.name = existing.name
-    AND existing.hash IS NOT NULL;
+    AND existing.checksum IS NOT NULL;

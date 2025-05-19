@@ -1,11 +1,14 @@
 -- :ingest_run_id
+-- :limit
 SELECT
+    id,
     name,
-    file_id
+    modified,
+    size
 FROM
     files
 WHERE
-    hash IS NULL
+    checksum IS NULL
     AND ingest_run_id = :ingest_run_id
 LIMIT
-    100
+    :limit;

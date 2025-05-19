@@ -30,7 +30,7 @@ CREATE TABLE files (
     -- parent TEXT NOT NULL,
     -- stem TEXT NOT NULL,
     -- extension TEXT,
-    hash BLOB,
+    checksum BLOB,
     FOREIGN KEY (added_snapshot_id) REFERENCES snapshots (id),
     FOREIGN KEY (deleted_snapshot_id) REFERENCES snapshots (id),
     FOREIGN KEY (disk_id) REFERENCES disks (id),

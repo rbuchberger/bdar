@@ -1,8 +1,8 @@
--- :file_id
--- :hash
+-- :id
+-- :checksum
 UPDATE
     files
 SET
-    hash = :hash
+    checksum = :checksum
 WHERE
-    file_id = :file_id;
+    id = :id;

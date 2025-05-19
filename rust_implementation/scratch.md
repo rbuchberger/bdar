@@ -28,3 +28,43 @@ Keep database clean of old ingest runs.
 
 - Index files in a transaction, so if it's in the database then it's complete.
 - Once you've copied over checksums from previous runs that don't have snapshots, delete them.
+
+## File queries
+
+New files:
+    Detection:
+
+```sql
+SELECT 
+    * 
+FROM 
+    files AS current
+LEFT JOIN
+    (
+        SELECT () FROM files
+        inner join snapshots on files.added_snapshot_id = snapshots.id
+        
+        
+    ) AS existing
+ON
+    current.path = existing.path
+```
+
+    Handling:
+    - set added_snapshot_id
+
+Modified files:
+    Detection:
+    - select file names
+    - sort by added snapshot capture time
+    - take the most recent
+    - result exists and is not dropped
+    Handling:
+    - set added_snapshot_id
+
+Deleted files:
+    Detection:
+    - select file names
+    - sort by added snapshot capture time
+    - take most recent
+    -

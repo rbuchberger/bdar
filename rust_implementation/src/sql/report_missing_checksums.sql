@@ -1,9 +1,9 @@
 -- :ingest_run_id
 SELECT
     count(*),
-    sum(files.size)
+    sum(size)
 FROM
     files
 WHERE
     ingest_run_id = :ingest_run_id
-    AND hash IS NULL;
+    AND checksum IS NULL;

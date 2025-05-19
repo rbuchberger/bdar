@@ -24,6 +24,6 @@ impl IngestRun {
                     finished: row.get::<_, Option<u64>>(2)?.map(Timestamp),
                 })
             })
-            .or(Err(Box::new(StatusErr::NotIndexed)))
+            .or(Err(StatusErr::NotIndexed.into()))
     }
 }

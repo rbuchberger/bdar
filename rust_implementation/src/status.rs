@@ -1,16 +1,15 @@
 use std::fmt;
-use std::fs::exists;
 
-use derive_more::{Display, Error};
+use derive_more::{Display, Error, From};
 
 use crate::context::Context;
 use crate::db::DB;
 use crate::Result;
 
-use self::disks::Disks;
-use self::files::FileReport;
-use self::ingest_run::IngestRun;
-use self::snapshot::Snapshot;
+pub use self::disks::Disks;
+pub use self::files::FileReport;
+pub use self::ingest_run::IngestRun;
+pub use self::snapshot::Snapshot;
 
 mod disks;
 mod files;
@@ -28,8 +27,9 @@ pub struct Status {
     disks_awaiting_burn: usize,
 }
 
-#[derive(Error, Debug, Display)]
+#[derive(Error, Debug, Display, From)]
 pub enum StatusErr {
+    #[error]
     NotIndexed,
     NotInitialized,
 }
@@ -56,7 +56,7 @@ impl fmt::Display for Status {
             )?;
             writeln!(
                 f,
-                "      It will be reported as deleted and created until hashed."
+                "      It will be reported as deleted and created until checksummed."
             )?;
         }
 
@@ -70,10 +70,10 @@ impl fmt::Display for Status {
 }
 
 impl Status {
-    fn new(ctx: &Context, db: &DB) -> Result<Self> {
-        if !exists(&ctx.db_path)? {
-            return Err(Box::new(StatusErr::NotInitialized));
-        };
+    fn new(_ctx: &Context, db: &DB) -> Result<Self> {
+        if !db.is_initialized()? {
+            return Err(StatusErr::NotInitialized.into());
+        }
 
         let last_ingest_run = IngestRun::get_last(db)?;
         let last_snapshot = Snapshot::get_last(db)?;
@@ -106,9 +106,19 @@ pub fn report(ctx: &Context, db: &DB) -> Result<()> {
         Ok(status) => {
             println!("{}", status);
         }
-        Err(problem) => {
-            dbg!(problem);
-        }
+        Err(e) => match e.downcast_ref::<StatusErr>() {
+            Some(StatusErr::NotInitialized) => {
+                eprintln!("Database is not created. Run `bdar initialize` to build it.");
+            }
+            Some(StatusErr::NotIndexed) => {
+                eprintln!("No files indexed. Run `bdar index` to populate the database.");
+            }
+            None => {
+                eprintln!("Unexpected error encountered.");
+                eprintln!("{}", e);
+                eprintln!("{}", e.backtrace());
+            }
+        },
     }
-    return Ok(());
+    Ok(())
 }

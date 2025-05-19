@@ -5,7 +5,14 @@ the world who might get them back off again.
 
 ---
 
-WORK IN PROGRESS, not ready for use
+## Work In Progress
+
+This project is not in any sort of usable state. I'm shelving it for now as I have a real job I
+should be doing, but I do still have the problem it's intended to solve so I'll be coming back to it
+eventually. Need to think some more on the database schema (or if I even need one), and my approach
+in general.
+
+The commit log is chaos and will absolutely be rewritten before I publish this.
 
 ---
 
@@ -48,10 +55,3 @@ everything this project can do and more, better, but the disk you produce is wei
 know what to do with it unless you explain it to them. Sure I can plop a statically compiled binary
 on every disk, but I'm still potentially inflicting the command line on my family and we all know
 that's not cool.
-
-## Dependencies
-
-- sqlite
-- nushell
-- dvdisaster
-- xorrisofs

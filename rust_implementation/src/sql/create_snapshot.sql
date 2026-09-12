@@ -1,4 +1,4 @@
 INSERT INTO
-    snapshots DEFAULT
+snapshots DEFAULT
 VALUES
-RETURNING id capture_time;
+RETURNING id capture_time ;

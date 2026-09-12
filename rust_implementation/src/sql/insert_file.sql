@@ -1,9 +1,9 @@
 INSERT INTO
-    files (name, modified, size, ingest_run_id)
+files (name, modified, size, ingest_run_id)
 VALUES
-    (
-        :path,
-        :modified,
-        :size,
-        :ingest_run_id
-    );
+(
+    : path,
+    : modified,
+    : size,
+    : ingest_run_id
+);

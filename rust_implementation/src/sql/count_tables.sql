@@ -3,5 +3,5 @@ SELECT
 FROM
     sqlite_schema
 WHERE
-    TYPE = 'table'
+    type = 'table'
     AND name NOT LIKE 'sqlite_%';

@@ -1,8 +1,8 @@
 -- :id
 -- :checksum
 UPDATE
-    files
+files
 SET
-    checksum = :checksum
+checksum =: checksum
 WHERE
-    id = :id;
+id =: id ;

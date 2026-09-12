@@ -5,5 +5,6 @@ SELECT
 FROM
     files
 WHERE
-    ingest_run_id = :ingest_run_id
-    AND checksum IS NULL;
+    ingest_run_id
+=: ingest_run_id
+AND checksum IS NULL;

@@ -1,7 +1,7 @@
 UPDATE
-    files
+files
 SET
-    size = :size,
-    modified = :modified
+size =: size,
+modified =: modified
 WHERE
-    id = :id;
+id =: id ;

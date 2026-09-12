@@ -26,11 +26,13 @@ INSERT INTO dest_table (column1, column2)
 ## filesystem
 
 get directory tree:
+
 ```sql
 SELECT name, mtime, length(data) 
     FROM fsdir('.')
     WHERE data IS NOT NULL;
 ```
+
 - fsdir takes a dir argument
 - data is the actual file data. Null for directories
 
@@ -44,7 +46,8 @@ path parsing:
 select path_dirname(name) from fsdir(.);
 ```
 
-## checksum:
+## checksum
+
 ```sql
 .load sqlite_extensions/crypto.so 
 select crypto_blake3(data) from fsdir(.);

@@ -1,8 +1,8 @@
 -- :file_id
 -- :hash
 UPDATE
-    files
+files
 SET
-    hash = :hash
+hash =: hash
 WHERE
-    file_id = :file_id;
+file_id =: file_id ;

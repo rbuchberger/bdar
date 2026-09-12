@@ -9,6 +9,7 @@ FROM
     files
 WHERE
     checksum IS NULL
-    AND ingest_run_id = :ingest_run_id
+    AND ingest_run_id
+=: ingest_run_id
 LIMIT
-    :limit;
+: limit;

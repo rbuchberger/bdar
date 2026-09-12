@@ -4,4 +4,5 @@ SELECT
 FROM
     files
 WHERE
-    files.ingest_run_id = :ingest_run_id;
+    files.ingest_run_id
+=: ingest_run_id;

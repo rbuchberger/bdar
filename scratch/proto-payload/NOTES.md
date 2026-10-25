@@ -14,3 +14,8 @@ Packing works on blobs with no verified copy. A rename or reorganisation creates
 copy-every-disc-in-order restore therefore produces the *old* layout for any file moved
 after its disc was burned, and a new copy of existing content never appears at its new
 path. `INDEX-sample.csv` shows this as a `stored_as` column.
+
+## Verdict (2026-10-25)
+
+Accepted and documented: no re-burn on rename, no restore tool. INDEX.csv drops the hash
+(db has it). Tools: static bdar + dvdisaster, Windows and Linux. Everything else as drafted.

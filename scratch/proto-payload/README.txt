@@ -34,7 +34,12 @@ You now have every file, as of the newest disc. Some things to expect:
 
 - Files that were deleted or moved after an early disc was burned will still
   be there, at their old location. Nothing is lost; there is just some extra.
-- {RENAME CAVEAT -- see prototype notes; wording depends on the decision}
+- Files that were renamed or moved to another folder after they were first
+  burned come back under their OLD name and folder. The content is all there;
+  only the organisation is older. INDEX.csv shows each file's current name
+  and, in the "stored_as" column, the name it has on the disc.
+- A file that was copied to a second place after it was first burned only
+  comes back at the first place. INDEX.csv lists both.
 - The copy will take up more space than the discs seem to hold. Identical
   files are stored once on a disc but appear in several folders; copying
   them to a hard drive writes each one out in full.
@@ -86,6 +91,7 @@ _ARCHIVE_INFO\archive.sqlite is the full database (SQLite), including the
 history of every earlier snapshot. On this disc it describes all discs up to
 and including this one; this disc's own entry is not yet marked verified,
 because the database was written before the disc was burned.
-INDEX.csv: one row per file in the library as of this disc. blake3 hashes.
+INDEX.csv: one row per file in the library as of this disc. Hashes (blake3)
+are in the database.
 Made with bdar ({version}), https://github.com/rbuchberger/bdar.
 A copy of bdar for Windows and Linux is in _ARCHIVE_INFO\tools.

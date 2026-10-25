@@ -10,7 +10,7 @@ D:\
 |   |-- README.txt                 <- full copy (root one is identical)
 |   |-- DISCS.txt                  <- one line per disc: number, date, set, what's on it
 |   |-- FOLDERS.txt                <- every folder in the current tree -> which discs hold its files
-|   |-- INDEX.csv                  <- every file in the current tree -> disc, size, hash
+|   |-- INDEX.csv                  <- every file in the current tree -> disc, stored_as, size
 |   |-- archive.sqlite             <- full db, history included, as of this disc
 |   |-- about-this-library\        <- contents of config `disc_extras` dir, verbatim
 |   |   `-- (owner-written notes: what Original/ means, how Immich is set up, ...)
@@ -28,5 +28,5 @@ Collision rule: a top-level archive name equal (case-insensitively, because Joli
 Windows are) to "README.txt" or "_ARCHIVE_INFO" is a config-load error.
 
 Overhead per disc: tools ~30 MB + db (est. 150-250 MB at 700k paths w/ history) + INDEX.csv
-(~110 MB) + FOLDERS.txt (~2 MB). Call it ~0.4 GB of ~41.5 GB payload, ~1%. ~60 discs -> ~25 GB,
+(~65 MB, no hashes) + FOLDERS.txt (~2 MB). Call it ~0.4 GB of ~41.5 GB payload, ~1%. ~60 discs -> ~25 GB,
 i.e. a bit over half a disc in total, for every disc being self-sufficient.

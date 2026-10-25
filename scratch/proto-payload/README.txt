@@ -32,7 +32,7 @@ GETTING EVERYTHING BACK
 
 You now have every file, as of the newest disc. Some things to expect:
 
-- Files that were deleted or moved after an early disc was burned will still
+- Files that were deleted after an early disc was burned will still
   be there, at their old location. Nothing is lost; there is just some extra.
 - Files that were renamed or moved to another folder after they were first
   burned come back under their OLD name and folder. The content is all there;

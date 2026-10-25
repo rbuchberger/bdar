@@ -1,0 +1,7 @@
+PROTOTYPE. Every folder in the library, and the discs that hold its files.
+Copy those discs to get the whole folder back.
+
+Original\2014\06-14                         discs 3, 61
+Original\2014\06-15                         disc  3
+Original\2015\Wedding                       disc  4      (files stored under another name -- see INDEX.csv)
+Special\Albums\2019 Italy                   discs 47, 48

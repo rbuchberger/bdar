@@ -1,0 +1,32 @@
+PROTOTYPE -- throwaway. Layout of one disc, as Windows Explorer shows it.
+Example: archive "Photos", disc 57, second snapshot set.
+
+Volume label (drive name in Explorer):  PHOTOS_057
+  Joliet caps the volume label at 16 chars, ISO9660 at 32 uppercase.
+  Format <ARCHIVE>_<NNN>; archive short name validated at config load (<= 12 chars).
+
+D:\
+|-- _ARCHIVE_INFO\                 <- same on every disc, newest wins
+|   |-- README.txt                 <- full copy (root one is identical)
+|   |-- DISCS.txt                  <- one line per disc: number, date, set, what's on it
+|   |-- FOLDERS.txt                <- every folder in the current tree -> which discs hold its files
+|   |-- INDEX.csv                  <- every file in the current tree -> disc, size, hash
+|   |-- archive.sqlite             <- full db, history included, as of this disc
+|   |-- about-this-library\        <- contents of config `disc_extras` dir, verbatim
+|   |   `-- (owner-written notes: what Original/ means, how Immich is set up, ...)
+|   `-- tools\
+|       |-- windows\  bdar.exe, dvdisaster-win64.zip
+|       |-- linux\    bdar (static, x86_64), dvdisaster-linux.appimage
+|       `-- dvdisaster_manual.pdf
+|-- Original\                      <- photos at real archive-relative paths
+|   `-- 2026\ ...
+|-- Immich\ ...
+|-- Special\ ...
+`-- README.txt                     <- the first thing anyone opens
+
+Collision rule: a top-level archive name equal (case-insensitively, because Joliet and
+Windows are) to "README.txt" or "_ARCHIVE_INFO" is a config-load error.
+
+Overhead per disc: tools ~30 MB + db (est. 150-250 MB at 700k paths w/ history) + INDEX.csv
+(~110 MB) + FOLDERS.txt (~2 MB). Call it ~0.4 GB of ~41.5 GB payload, ~1%. ~60 discs -> ~25 GB,
+i.e. a bit over half a disc in total, for every disc being self-sufficient.

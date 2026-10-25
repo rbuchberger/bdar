@@ -1,0 +1,8 @@
+PROTOTYPE. Every disc in this archive. Numbers are written on each disc.
+
+Disc  Burned      Set  Contents (first file .. last file)
+   1  2026-11-02    1  Immich\library\... .. Original\2009\03-11\IMG_0133.JPG
+   2  2026-11-02    1  Original\2009\03-11\IMG_0134.JPG .. Original\2011\12-24\DSC_8812.NEF
+ ...
+  60  2026-12-19    1  Special\Weddings\... .. bdar-extras\immich-db-backup-...sql.gz
+  61  2027-11-08    2  Immich\upload\... .. bdar-extras\immich-db-backup-...sql.gz

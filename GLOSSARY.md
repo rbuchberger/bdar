@@ -78,11 +78,6 @@ blob its snapshot references has a copy on a verified disc.
 The blobs the latest snapshot references that have no copy on a verified disc yet. It is never
 stored, only worked out from what is already recorded. When it is empty, the snapshot set is complete.
 
-**Unobtainable blob**:
-A blob the latest snapshot references but whose source changed or vanished after the snapshot was
-taken, so it can no longer be read to put on a disc. It is skipped until a new snapshot picks up the
-file's current content.
-
 **Freeze**:
 A read-only, point-in-time view of an archive's roots, taken by a user-configured command just
 before a snapshot is taken and held until its snapshot set is complete or superseded. Taking the
@@ -136,8 +131,7 @@ A periodic read check of discs already burned, to catch degradation while copies
 remade.
 
 **Degraded disc**:
-A verified disc whose latest read found unreadable or mismatched data that persisted on a second
-read. It needs remaking. A disc whose problem cleared on the re-read is only watched.
+A verified disc whose latest read found unreadable or mismatched data. It needs remaking.
 
 **Retired disc**:
 A verified disc whose copies no longer count, because it degraded, was lost, or can't be read at
@@ -150,12 +144,6 @@ _Avoid_: remade disc (the disc itself is never remade, only its content)
 **Step**:
 One named stage of turning a disc's worth of files into a burned disc by invoking an external tool.
 The set of step names is fixed; a step with no command configured is skipped.
-
-**Check**:
-An optional step that reads a burned disc with an external tool, alongside verification and scrubs.
-Its result is kept for a human to read and never counts as verification, which is bdar's own and
-never a step.
-_Avoid_: scan, verify
 
 **Staging directory**:
 Where the one disc image in flight is built and kept until its disc is verified. Never inside a

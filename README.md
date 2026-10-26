@@ -19,8 +19,8 @@ The commit log is chaos and will absolutely be rewritten before I publish this.
 ## Features
 
 - Split many files across many disks, in a sensible order, without doing it manually.
-- Create incremental snapshots with new files, as well as lists of deleted and renamed files.
-- Use hashes to detect renamed files, avoid saving an entirely new copy.
+- Create incremental snapshots: only new content gets burned.
+- Identify files by content hash, so a moved, renamed or duplicated file is never burned again.
 - Track down which snapshot and disk contains a particular file, without going through many of them.
 - Use dvdisaster to add ECC data to generated ISOs, so maybe you'll actually be able to get the data
   off if there's a little degradation over the years.
